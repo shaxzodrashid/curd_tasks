@@ -24,6 +24,8 @@ class SupabaseMDXManager:
         
         # Load files on startup
         self.refresh_file_list()
+
+        self.bind_additional_events()
     
     def setup_supabase(self):
         """Initialize Supabase client"""
@@ -37,6 +39,7 @@ class SupabaseMDXManager:
             from supabase import create_client
             self.supabase = create_client(url, key)
             self.bucket_name = "mdx-files"
+            self.folder_states = {} 
         except Exception as e:
             from tkinter import messagebox
             messagebox.showerror("Connection Error", f"Failed to connect to Supabase: {str(e)}")
@@ -687,86 +690,102 @@ class SupabaseMDXManager:
         threading.Thread(target=load_files_task, daemon=True).start()
     
     def display_files(self, files):
-        """Display files in a hierarchical treeview"""
+        """Enhanced display files method with better folder handling"""
         self.stop_loading()
         
         # Clear existing items
         for item in self.files_tree.get_children():
             self.files_tree.delete(item)
         
-        # This dictionary will store the Treeview item ID for each folder path we create.
-        # e.g., {'posts': 'I001', 'posts/drafts': 'I002'}
+        # Dictionary to store folder tree items
         folders_in_tree = {}
-
-        # Sort the list to help process folders before their contents, although the logic handles any order.
-        files.sort(key=lambda f: f.get('name'))
-
+        
+        # First pass: Create all folders
+        all_folder_paths = set()
+        
+        # Extract all folder paths from file paths
         for file_info in files:
-            full_path = file_info.get('name')
-            
-            # Skip placeholder files used by Supabase to represent empty folders
-            if full_path.endswith('.emptyFolderPlaceholder'):
+            full_path = file_info.get('name', '')
+            if not full_path or full_path.endswith('.emptyFolderPlaceholder'):
                 continue
-            
-            # A reliable way to detect a folder is if it has no UUID 'id'.
+                
+            # Check if this is a folder object (no 'id' field)
             is_folder_object = file_info.get('id') is None
             if is_folder_object:
-                # This is an empty folder object from the API. We'll ensure it's created.
-                # The main logic below handles folders with content anyway, but this catches empty ones.
-                if full_path not in folders_in_tree:
-                    folder_item = self.files_tree.insert(
-                        "", "end", text="📁", values=(full_path, full_path, "", "", ""), tags=("folder",)
-                    )
-                    folders_in_tree[full_path] = folder_item
+                all_folder_paths.add(full_path)
+            elif '/' in full_path:
+                # Extract folder path from file path
+                path_parts = full_path.split('/')[:-1]  # Remove filename
+                for i in range(len(path_parts)):
+                    folder_path = '/'.join(path_parts[:i+1])
+                    all_folder_paths.add(folder_path)
+        
+        # Create folder tree structure
+        sorted_folders = sorted(all_folder_paths, key=lambda x: (x.count('/'), x))
+        
+        for folder_path in sorted_folders:
+            if folder_path in folders_in_tree:
                 continue
-
-            # This logic handles all files and creates their parent folders as needed.
-            parent_item_id = "" # Default to root of the tree
+                
+            parts = folder_path.split('/')
+            folder_name = parts[-1]
             
+            # Determine parent
+            parent_item_id = ""
+            if len(parts) > 1:
+                parent_path = '/'.join(parts[:-1])
+                parent_item_id = folders_in_tree.get(parent_path, "")
+            
+            # Get saved folder state (default to False for collapsed)
+            is_open = self.folder_states.get(folder_path, False)
+            
+            # Choose icon based on state
+            folder_icon = "📂" if is_open else "📁"
+            
+            folder_item_id = self.files_tree.insert(
+                parent_item_id,
+                "end",
+                text=folder_icon,
+                values=(folder_name, folder_path, "", "", ""),
+                tags=("folder",),
+                open=is_open
+            )
+            folders_in_tree[folder_path] = folder_item_id
+        
+        # Second pass: Add files to their respective folders
+        for file_info in files:
+            full_path = file_info.get('name', '')
+            
+            # Skip folder objects and placeholder files
+            if (not full_path or 
+                full_path.endswith('.emptyFolderPlaceholder') or 
+                file_info.get('id') is None):
+                continue
+            
+            # Determine file name and parent folder
             if '/' in full_path:
                 parts = full_path.split('/')
                 file_name = parts[-1]
-                parent_path = ""
-                
-                # Walk the path and create folder nodes if they don't exist
-                for part in parts[:-1]:
-                    if parent_path:
-                        current_path = f"{parent_path}/{part}"
-                    else:
-                        current_path = part
-
-                    # If we haven't created a tree item for this folder path yet, do it now.
-                    if current_path not in folders_in_tree:
-                        folder_item_id = self.files_tree.insert(
-                            parent_item_id, # Parent is the previous folder in the path
-                            "end", 
-                            text="📁", 
-                            values=(part, current_path, "", "", ""), # Name is the folder name, path is full path
-                            tags=("folder",)
-                        )
-                        folders_in_tree[current_path] = folder_item_id
-                    
-                    # The next item will be a child of this folder
-                    parent_item_id = folders_in_tree[current_path]
-                    parent_path = current_path
+                parent_path = '/'.join(parts[:-1])
+                parent_item_id = folders_in_tree.get(parent_path, "")
             else:
-                # This is a file in the root directory
                 file_name = full_path
-
+                parent_item_id = ""
+            
             # Get file metadata
-            metadata = file_info.get('metadata')
-            file_size = metadata.get('size', 0) if metadata else 0
+            metadata = file_info.get('metadata', {})
+            file_size = metadata.get('size', 0)
             size = self.format_file_size(file_size)
             modified = self.format_date(file_info.get('updated_at', ''))
-
+            
             # Get public URL
             try:
                 url_response = self.supabase.storage.from_(self.bucket_name).get_public_url(full_path)
                 public_url = url_response if isinstance(url_response, str) else ""
             except:
                 public_url = ""
-
-            # Insert the file under its correct parent folder (or the root)
+            
+            # Insert file
             self.files_tree.insert(
                 parent_item_id,
                 "end",
@@ -774,12 +793,133 @@ class SupabaseMDXManager:
                 values=(file_name, full_path, size, modified, public_url),
                 tags=("file",)
             )
-
-        # Configure tag styles for better visual separation
-        self.files_tree.tag_configure("folder", background="#f0f0f0")
+        
+        # Configure tag styles
+        self.files_tree.tag_configure("folder", background="#f0f8ff")
         self.files_tree.tag_configure("file", background="white")
         
         self.update_status(f"Loaded {len(files)} items")
+
+    def setup_tree_events(self):
+        """Setup additional tree events for folder handling"""
+        # Bind tree open/close events
+        self.files_tree.bind("<<TreeviewOpen>>", self.on_tree_open)
+        self.files_tree.bind("<<TreeviewClose>>", self.on_tree_close)
+        
+        # Also handle single-click selection for visual feedback
+        self.files_tree.bind("<Button-1>", self.on_tree_click)
+
+    def on_tree_click(self, event):
+        """Handle single click to update folder icons"""
+        item_id = self.files_tree.identify_row(event.y)
+        if not item_id:
+            return
+        
+        item = self.files_tree.item(item_id)
+        if "folder" in item.get('tags', []):
+            # Check if click was on the triangle (expand/collapse area)
+            region = self.files_tree.identify_region(event.x, event.y)
+            if region == "tree":
+                # This is a click on the triangle, let the default handler manage it
+                # We'll update the icon in the TreeviewOpen/Close events
+                pass
+
+    # Modified create_widgets method - add this line after binding the existing events:
+    def bind_additional_events(self):
+        """Call this after create_widgets to bind additional events"""
+        # Remove the old double-click binding and add the new one
+        self.files_tree.unbind("<Double-1>")
+        self.files_tree.bind("<Double-1>", self.on_file_double_click)
+        
+        # Setup tree events
+        self.setup_tree_events()
+
+    def toggle_folder(self, item_id):
+        """Toggle folder expand/collapse state"""
+        current_state = self.files_tree.item(item_id, 'open')
+        new_state = not current_state
+        self.files_tree.item(item_id, open=new_state)
+        
+        # Update icon and save state
+        item = self.files_tree.item(item_id)
+        folder_path = item['values'][1]
+        self.folder_states[folder_path] = new_state
+        
+        if new_state:
+            self.files_tree.item(item_id, text="📂")
+        else:
+            self.files_tree.item(item_id, text="📁")
+        
+    
+    def upload_file_to_folder(self, folder_path):
+        """Upload file to specific folder"""
+        file_path = filedialog.askopenfilename(
+            title="Select File to Upload",
+            filetypes=[("MDX files", "*.mdx"), ("Markdown files", "*.md"), ("All files", "*.*")]
+        )
+        
+        if not file_path:
+            return
+        
+        filename = os.path.basename(file_path)
+        remote_path = f"{folder_path}/{filename}"
+        
+        # Use existing upload logic but with predefined path
+        self.start_loading("Uploading file...")
+        
+        def upload_task():
+            try:
+                with open(file_path, "rb") as f:
+                    result = self.supabase.storage.from_(self.bucket_name).upload(
+                        file=f,
+                        path=remote_path,
+                        file_options={"content-type": "text/markdown"}
+                    )
+                
+                self.root.after(0, lambda: self.upload_complete(result, remote_path))
+                
+            except StorageApiError as e:
+                if "already exists" in str(e):
+                    self.root.after(0, lambda: self.handle_file_exists(file_path, remote_path))
+                else:
+                    self.root.after(0, lambda e=e: self.upload_error(str(e)))
+            except Exception as e:
+                self.root.after(0, lambda e=e: self.upload_error(str(e)))
+        
+        threading.Thread(target=upload_task, daemon=True).start()
+
+    def create_subfolder(self, parent_folder):
+        """Create subfolder within existing folder"""
+        subfolder_name = tk.simpledialog.askstring(
+            "Create Subfolder",
+            f"Enter subfolder name within '{parent_folder}':"
+        )
+        
+        if not subfolder_name:
+            return
+        
+        folder_path = f"{parent_folder}/{subfolder_name}"
+        placeholder_path = f"{folder_path}/.gitkeep"
+        
+        self.start_loading("Creating subfolder...")
+        
+        def create_task():
+            try:
+                import io
+                placeholder_content = io.BytesIO(b"# Subfolder created by MDX Manager")
+                
+                result = self.supabase.storage.from_(self.bucket_name).upload(
+                    file=placeholder_content,
+                    path=placeholder_path,
+                    file_options={"content-type": "text/plain"}
+                )
+                
+                self.root.after(0, lambda: self.folder_create_complete(folder_path))
+                
+            except Exception as e:
+                self.root.after(0, lambda e=e: self.folder_create_error(str(e)))
+        
+        threading.Thread(target=create_task, daemon=True).start()
     
     def load_files_error(self, error_msg):
         """Handle file loading error"""
@@ -822,22 +962,106 @@ class SupabaseMDXManager:
     # Event handlers
     
     def on_file_double_click(self, event):
-        """Handle double-click on file"""
+        """Handle double-click on file or folder"""
         selected = self.files_tree.selection()
-        if selected:
-            item = self.files_tree.item(selected[0])
-            # Only open if it's a file, not a folder
-            if "file" in item.get('tags', []) and item['values'][1]:  # Has path and is a file
-                self.view_file()
+        if not selected:
+            return
+        
+        item = self.files_tree.item(selected[0])
+        
+        # Check if it's a folder
+        if "folder" in item.get('tags', []):
+            # Toggle folder open/closed state
+            current_state = self.files_tree.item(selected[0], 'open')
+            new_state = not current_state
+            self.files_tree.item(selected[0], open=new_state)
+            
+            # Save the folder state
+            folder_path = item['values'][1]  # Full path of the folder
+            self.folder_states[folder_path] = new_state
+            
+            # Update folder icon based on state
+            if new_state:
+                self.files_tree.item(selected[0], text="📂")  # Open folder
+            else:
+                self.files_tree.item(selected[0], text="📁")  # Closed folder
+        
+        # If it's a file, open it for viewing
+        elif "file" in item.get('tags', []) and item['values'][1]:
+            self.view_file()
+
+    def on_tree_open(self, event):
+        """Handle folder opening via keyboard or click on triangle"""
+        selected = self.files_tree.selection()
+        if not selected:
+            return
+        
+        item_id = selected[0]
+        item = self.files_tree.item(item_id)
+        
+        if "folder" in item.get('tags', []):
+            folder_path = item['values'][1]
+            self.folder_states[folder_path] = True
+            self.files_tree.item(item_id, text="📂")  # Open folder icon
+
+    def on_tree_close(self, event):
+        """Handle folder closing via keyboard or click on triangle"""
+        selected = self.files_tree.selection()
+        if not selected:
+            return
+        
+        item_id = selected[0]
+        item = self.files_tree.item(item_id)
+        
+        if "folder" in item.get('tags', []):
+            folder_path = item['values'][1]
+            self.folder_states[folder_path] = False
+            self.files_tree.item(item_id, text="📁")  # Closed folder icon
     
     def show_context_menu(self, event):
-        """Show context menu on right-click"""
-        item = self.files_tree.identify_row(event.y)
-        if item:
-            self.files_tree.selection_set(item)
-            self.context_menu.post(event.x_root, event.y_root)
-    
-    # Utility methods
+        """Show context menu on right-click with folder-specific options"""
+        item_id = self.files_tree.identify_row(event.y)
+        if not item_id:
+            return
+            
+        self.files_tree.selection_set(item_id)
+        item = self.files_tree.item(item_id)
+        
+        # Clear existing menu
+        self.context_menu.delete(0, tk.END)
+        
+        if "folder" in item.get('tags', []):
+            # Folder context menu
+            folder_path = item['values'][1]
+            is_open = self.files_tree.item(item_id, 'open')
+            
+            if is_open:
+                self.context_menu.add_command(label="📁 Collapse Folder", 
+                                            command=lambda: self.toggle_folder(item_id))
+            else:
+                self.context_menu.add_command(label="📂 Expand Folder", 
+                                            command=lambda: self.toggle_folder(item_id))
+            
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="📄 Upload File Here", 
+                                        command=lambda: self.upload_file_to_folder(folder_path))
+            self.context_menu.add_command(label="📂 Create Subfolder", 
+                                        command=lambda: self.create_subfolder(folder_path))
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="🏷️ Rename Folder", 
+                                        command=lambda: self.rename_folder(item_id))
+            self.context_menu.add_command(label="🗑️ Delete Folder", 
+                                        command=lambda: self.delete_folder(item_id))
+        else:
+            # File context menu (existing)
+            self.context_menu.add_command(label="📄 View Content", command=self.view_file)
+            self.context_menu.add_command(label="📥 Download", command=self.download_file)
+            self.context_menu.add_command(label="✏️ Rename", command=self.rename_file)
+            self.context_menu.add_command(label="🔗 Copy URL", command=self.copy_url)
+            self.context_menu.add_separator()
+            self.context_menu.add_command(label="🗑️ Delete", command=self.delete_file)
+        
+        self.context_menu.post(event.x_root, event.y_root)
     
     def format_file_size(self, size_bytes):
         """Format file size in human readable format"""
