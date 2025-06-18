@@ -1,0 +1,136 @@
+
+
+
+# Google DeepMind'dan Gemini Diffusion LLM: Matn Generatsiyasida Inqilob
+
+## Kirish
+
+Sun'iy intellekt (AI) sohasidagi so'nggi yutuqlar, ayniqsa, katta til modellarining (LLM) rivojlanishi bilan hayratlanarli darajada tezlashdi. Ushbu modellar matn yaratish, tarjima qilish, savollarga javob berish va boshqa ko'plab vazifalarni bajarishda misli ko'rilmagan imkoniyatlarni namoyish etmoqda. Google DeepMind tomonidan ishlab chiqilgan Gemini Diffusion LLM esa bu sohada yangi sahifa ochib, matn generatsiyasiga mutlaqo boshqacha yondashuvni taklif etadi. An'anaviy avtoregressiv modellar bir so'zni ketma-ket generatsiya qilsa, Gemini Diffusion 
+
+
+diffusion (tarqalish) modelidan foydalanadi. Bu esa matn generatsiyasini tezroq, ijodiyroq va nazorat qilinadiganroq qilishga qaratilgan. Ushbu maqolada biz Gemini Diffusion LLM ning o‘ziga xos xususiyatlari, ishlash mexanizmi, afzalliklari va kelajakdagi istiqbollarini atroflicha ko‘rib chiqamiz.
+
+## Gemini Diffusion nima?
+
+Anʼanaviy katta til modellari, masalan, Gemini oilasining koʻplab modellari yoki OpenAI ning GPT seriyasi, “avtoregressiv” hisoblanadi. Ular matnni bir soʻz (yoki “token”) ketma-ketligida, har bir tanlov oldingi soʻzlarga bogʻliq holda yaratadi. Bu jarayon sekin boʻlishi mumkin va baʼzan model boshida unchalik mukammal boʻlmagan tanlov qilsa, bu matnning qolgan qismiga taʼsir qilishi mumkin. Gemini Diffusion esa butunlay boshqacha yondashuvni qoʻllaydi. U matnni toʻgʻridan-toʻgʻri bashorat qilish oʻrniga, shovqinni bosqichma-bosqich tozalash orqali natijalarni generatsiya qilishni oʻrganadi. Bu jarayon tasvir generatsiyasida ishlatiladigan diffuziya modellariga oʻxshaydi, lekin matn uchun moslashtirilgan.
+
+Diffuziya modellari tasvir generatsiyasida katta muvaffaqiyatlarga erishgan. Ular tasvirga bosqichma-bosqich shovqin qoʻshib, uni butunlay buzib tashlaydi, soʻngra bu shovqinni teskari jarayon orqali olib tashlab, asl tasvirni qayta tiklashni oʻrganadi. Gemini Diffusion ham xuddi shu tamoyilga asoslanadi, faqat tasvirlar oʻrniga matn bilan ishlaydi. U matnni “shovqin” ga aylantiradi va keyin bu shovqinni “tozalash” orqali izchil va maʼnoli matnni qayta tiklaydi. Bu jarayon modelga matnning butun bir qismiga bir vaqtning oʻzida eʼtibor qaratish va uni iterativ ravishda takomillashtirish imkonini beradi.
+
+## Qanday ishlaydi?
+
+Gemini Diffusion ning ishlash mexanizmi bir necha asosiy bosqichdan iborat:
+
+1.  **Shovqin qoʻshish (Forward Diffusion Process):** Bu bosqichda matnga bosqichma-bosqich tasodifiy shovqin qoʻshiladi. Har bir qadamda matn tobora buzilib, oxir-oqibat butunlay tasodifiy shovqinga aylanadi. Bu jarayon modelga matnning turli darajadagi buzilishlarini tushunishga yordam beradi.
+
+2.  **Shovqinni tozalash (Reverse Diffusion Process):** Bu asosiy generatsiya bosqichidir. Model shovqinli matnni qabul qiladi va uni bosqichma-bosqich tozalash orqali asl, maʼnoli matnni qayta tiklashni oʻrganadi. Har bir qadamda model matnning qaysi qismlari shovqin ekanligini aniqlaydi va ularni tuzatadi. Bu iterativ jarayon modelga matnning umumiy tuzilishini va mazmunini yaxshiroq tushunishga imkon beradi.
+
+3.  **Iterativ takomillashtirish:** Avtoregressiv modellar bir soʻzni generatsiya qilib, keyingisiga oʻtadi va oldingi xatolarini tuzatish imkoniyatiga ega emas. Diffuziya modellari esa har bir iteratsiyada butun matnni koʻrib chiqishi va xatolarni tuzatishi mumkin. Bu xususiyat, ayniqsa, matematik masalalar yoki kod generatsiyasi kabi aniqlik talab qiladigan vazifalarda juda muhimdir.
+
+## Afzalliklari
+
+Gemini Diffusion LLM ning anʼanaviy avtoregressiv modellarga nisbatan bir qancha muhim afzalliklari bor:
+
+*   **Tezlik va samaradorlik:** Gemini Diffusion kontentni oldingi eng tez modellaridan ham tezroq generatsiya qiladi. Google DeepMind maʼlumotlariga koʻra, u sekundiga 1479 tokengacha matn generatsiya qila oladi, bu esa avtoregressiv modellarga nisbatan sezilarli darajada tezdir. Bu tezlik uning butun matn bloklari bilan bir vaqtda ishlash qobiliyatidan kelib chiqadi.
+
+*   **Koʻproq izchil matn:** Butun token bloklarini bir vaqtda generatsiya qilishi sababli, u yaratgan matn ancha izchil boʻladi. Model umumiy rasm haqida yaxshiroq tasavvurga ega boʻlib, bu silliqroq va mantiqiy bogʻlangan yozuvga olib keladi.
+
+*   **Xatolarni tuzatish qobiliyati:** Bosqichma-bosqich takomillashtirish jarayoni modelga generatsiya jarayonida xatolarni tuzatish imkonini beradi. Bu izchillik va aniqlik uchun katta plyusdir.
+
+*   **Nazorat va moslashuvchanlik:** Diffuziya modellari generatsiya jarayonini koʻproq nazorat qilish imkonini beradi. Matn qoʻshimcha shartlarga bogʻliq boʻlishi mumkin, bu esa foydalanuvchiga yakuniy natija ustidan koʻproq hukmronlik qilish imkonini beradi.
+
+*   **Murakkab vazifalarda yuqori samaradorlik:** Gemini Diffusion, ayniqsa, kod generatsiyasi va matematik masalalarni yechish kabi aniqlik va iterativ takomillashtirishni talab qiladigan vazifalarda yuqori natijalarni koʻrsatadi. Uning xatolarni tuzatish qobiliyati bu turdagi vazifalar uchun juda foydali.
+
+## Benchmarks (Qiyosiy testlar)
+
+Google DeepMind Gemini Diffusion ni oʻzining boshqa modellari, xususan, Gemini 2.0 Flash-Lite bilan bir qancha testlarda solishtirdi. Bu testlar modelning turli vazifalardagi samaradorligini oʻlchaydi. Barcha ballar “pass @1” boʻlib, bu modelning birinchi urinishdayoq toʻgʻri javob berganini anglatadi.
+
+| Kategoriya | Benchmark | **Gemini Diffusion (%)** | **Gemini 2.0 Flash-Lite (%)** |
+| --- | --- | --- | --- |
+| Kod | LiveCodeBench (v6) | 30.9 | 28.5 |
+| Kod | BigCodeBench | 45.4 | 45.8 |
+| Kod | LBPP (v2) | 56.8 | 56.0 |
+| Kod | SWE-Bench Verified\* | 22.9 | 28.5 |
+| Kod | HumanEval | 89.6 | 90.2 |
+| Kod | MBPP | 76.0 | 75.8 |
+| Fan | GPQA Diamond | 40.4 | 56.5 |
+| Matematika | AIME 2025 | 23.3 | 20.0 |
+| Mantiqiy fikrlash | BIG-Bench Extra Hard | 15.0 | 21.0 |
+| Koʻp tillilik | Global MMLU (Lite) | 69.1 | 79.0 |
+
+**Bu raqamlar nimani anglatadi (sodda qilib aytganda):**
+
+*   **Kod va matematikada yaxshi:** Gemini Diffusion bir qancha kodlash testlarida (LiveCodeBench, LBPP kabi) va ayniqsa, matematika testida (AIME 2025) yaxshi, baʼzan esa undan ham yaxshiroq natijalarni koʻrsatadi. Uning takomillashtirish va tuzatish qobiliyati bu yerda foydali boʻladi.
+*   **Flash-Lite boshqa joylarda kuchliroq:** Gemini 2.0 Flash-Lite fan bilimlari (GPQA Diamond), murakkab mantiqiy fikrlash (BIG-Bench Extra Hard) va koʻp tillarni tushunish (Global MMLU) testlarida yuqori ball oldi.
+*   **Tez va qobiliyatli:** Google DeepMind ning taʼkidlashicha, Gemini Diffusion ning samaradorligi “ancha katta modellar bilan taqqoslanadigan darajada, shu bilan birga tezroqdir”. Bu juda muhim – bu yaxshi natijalarni tezroq olishga oʻxshaydi.
+
+## Kelajak istiqbollari
+
+Gemini Diffusion hali eksperimental model boʻlsa-da, uning matn generatsiyasi sohasidagi salohiyati juda katta. Diffuziya modellari matn generatsiyasiga yangi yondashuvni taklif qilib, avtoregressiv modellarning baʼzi cheklovlarini bartaraf etishga yordam beradi. Tezlik, izchillik va nazoratning oshishi Gemini Diffusion ni kelajakdagi AI ilovalari uchun juda jozibador qiladi.
+
+Ushbu texnologiya quyidagi sohalarda katta oʻzgarishlar yasashi mumkin:
+
+*   **Kontent yaratish:** Maqolalar, hikoyalar, skriptlar va boshqa turdagi matnli kontentni tezroq va sifatliroq yaratish.
+*   **Kod generatsiyasi va tuzatish:** Dasturchilar uchun kod yozishda yordam berish, xatolarni topish va tuzatish.
+*   **Taʼlim:** Oʻquv materiallari, savollar va javoblarni avtomatik generatsiya qilish.
+*   **Tarjima:** Aniqroq va tabiiyroq tarjimalarni taqdim etish.
+*   **Ijodiy yozuv:** Sheʼrlar, qoʻshiq matnlari va boshqa ijodiy asarlarni yaratishda yordam berish.
+
+Google DeepMind ning Gemini Diffusion ustida olib borayotgan ishlari AI ning kelajakda qanday rivojlanishini koʻrsatib beradi. Diffuziya modellari matn generatsiyasini yanada insoniy va samarali qilish yoʻlida muhim qadamdir. Hozirda u eksperimental demo sifatida mavjud boʻlib, unga kirish uchun kutish roʻyxatiga yozilish kerak. Ammo, bu texnologiyaning tez orada keng jamoatchilikka taqdim etilishi kutilmoqda.
+
+## Xulosa
+
+Google DeepMind tomonidan taqdim etilgan Gemini Diffusion LLM matn generatsiyasi sohasida yangi davrni boshlab berishi mumkin boʻlgan innovatsion modeldir. Uning diffuziya tamoyiliga asoslangan ishlash mexanizmi, yuqori tezlik, matn izchilligi va xatolarni tuzatish qobiliyati uni anʼanaviy avtoregressiv modellardan ajratib turadi. Gemini Diffusion ning kelajakdagi rivojlanishi AI ning imkoniyatlarini yanada kengaytirib, turli sohalarda inqilobiy oʻzgarishlarga olib kelishi shubhasiz. Bu model AI ning nafaqat matn yaratish, balki uni yanada chuqurroq tushunish va takomillashtirish yoʻlidagi muhim qadamdir. 
+
+
+
+
+![Gemini Diffusion LLM 2.0](/home/ubuntu/upload/search_images/MyLhtLsb2Sdj.jpg)
+
+
+
+
+
+
+![Gemini Diffusion is our new experimental research model](/home/ubuntu/upload/search_images/EnoWWq1IRfSX.jpg)
+
+
+
+
+
+
+## Nima uchun Gemini Diffusion muhim?
+
+Gemini Diffusion ning paydo boʻlishi matn generatsiyasi sohasida bir necha sabablarga koʻra muhim ahamiyatga ega:
+
+1.  **Paradigma oʻzgarishi:** Anʼanaviy avtoregressiv modellar oʻn yildan ortiq vaqt davomida LLMlar uchun standart boʻlib kelgan. Gemini Diffusion esa diffuziya modelini matn generatsiyasiga muvaffaqiyatli tatbiq etish orqali yangi paradigmani taklif qiladi. Bu yondashuv kelajakda yanada samarali va kuchli til modellarini yaratish uchun yangi yoʻllarni ochishi mumkin.
+
+2.  **Ishlash samaradorligini oshirish:** Tezlik va izchillik Gemini Diffusion ning asosiy afzalliklaridan biridir. Sekundiga 1479 tokengacha generatsiya qilish qobiliyati real vaqt rejimida koʻproq interaktiv ilovalarni yaratishga imkon beradi. Bu, ayniqsa, mijozlarga xizmat koʻrsatish, dasturiy taʼminotni ishlab chiqish va tezkor kontent yaratish kabi sohalarda katta ahamiyatga ega.
+
+3.  **Yangi imkoniyatlar:** Diffuziya modellari matnni iterativ ravishda takomillashtirish qobiliyatiga ega boʻlganligi sababli, ular avtoregressiv modellar uchun qiyin boʻlgan vazifalarni, masalan, murakkab kodni tuzatish yoki matematik muammolarni yechishni yaxshiroq bajarishi mumkin. Bu, AI ning yanada murakkab va aniqlik talab qiladigan sohalarda qoʻllanilishini kengaytiradi.
+
+4.  **Tadqiqot va rivojlanishga turtki:** Gemini Diffusion ning muvaffaqiyati boshqa tadqiqotchilarni ham diffuziya modellari va boshqa yangi arxitekturalarni til generatsiyasiga tatbiq etishga undaydi. Bu esa AI sohasidagi umumiy rivojlanishni tezlashtiradi va kelajakda yanada innovatsion yechimlarning paydo boʻlishiga zamin yaratadi.
+
+5.  **Nazoratning oshishi:** Diffuziya modellari generatsiya jarayonini yanada nozik nazorat qilish imkonini beradi. Bu, foydalanuvchilarning oʻz ehtiyojlariga mos keladigan matnni yaratishda koʻproq erkinlikka ega boʻlishini anglatadi. Masalan, matnning ohangini, uslubini yoki maʼlum bir mavzuga qaratilganligini aniqroq belgilash mumkin.
+
+Gemini Diffusion nafaqat texnologik yutuq, balki AI ning kelajakdagi yoʻnalishini belgilab beruvchi muhim qadamdir. Uning imkoniyatlari va afzalliklari AI ning turli sohalarda yanada kengroq qoʻllanilishiga va inson-kompyuter oʻzaro aloqasini yanada samarali qilishga yordam beradi.
+
+
+
+
+
+## Gemini Diffusion va boshqa modellar oʻrtasidagi farqlar
+
+Gemini Diffusion ning asosiy farqi uning diffuziya modeliga asoslanganligidir. Keling, uni anʼanaviy avtoregressiv modellar bilan solishtiraylik:
+
+| Xususiyat | Avtoregressiv modellar (masalan, GPT, anʼanaviy Gemini) | Gemini Diffusion |
+|---|---|---|
+| **Generatsiya mexanizmi** | Bir soʻzdan keyin ikkinchi soʻzni ketma-ket generatsiya qiladi. | Shovqinni bosqichma-bosqich tozalash orqali matnni generatsiya qiladi. |
+| **Tezlik** | Sekinroq, chunki har bir token ketma-ket generatsiya qilinadi. | Tezroq, chunki butun matn bloklari bir vaqtda ishlanadi. |
+| **Izchillik** | Baʼzan oldingi xatolar keyingi generatsiyaga taʼsir qilishi mumkin. | Yuqori izchillik, chunki model butun matnni iterativ ravishda takomillashtiradi. |
+| **Nazorat** | Cheklangan nazorat, generatsiya jarayonini oʻzgartirish qiyin. | Yuqori nazorat, matnni iterativ ravishda tahrirlash va shartlarga bogʻlash mumkin. |
+| **Xatolarni tuzatish** | Generatsiya jarayonida xatolarni tuzatish imkoniyati yoʻq. | Generatsiya jarayonida xatolarni aniqlash va tuzatish qobiliyati mavjud. |
+| **Qoʻllash sohalari** | Umumiy matn generatsiyasi, tarjima, savol-javob. | Kod generatsiyasi, matematik masalalar, tahrirlash, yuqori aniqlik talab qiladigan vazifalar. |
+
+Bu taqqoslash Gemini Diffusion ning matn generatsiyasiga yangi, samaraliroq va nazorat qilinadigan yondashuvni taklif qilishini koʻrsatadi. Uning diffuziya mexanizmi nafaqat tezlikni oshiradi, balki generatsiya qilingan matnning sifatini va izchilligini ham yaxshilaydi.
+
+

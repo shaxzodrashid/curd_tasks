@@ -1,0 +1,28 @@
+.
+├── README.md
+├── article.mdx
+├── config
+│   ├── README.md
+│   ├── __init__.py
+│   ├── secrets.json
+│   └── settings.py
+├── fleet-geode-419417-f720c9509c59.json
+├── requirements.txt
+├── src
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── article_module.py
+│   ├── config.py
+│   ├── firestore_module.py
+│   ├── main.py
+│   ├── supabase_module.py
+│   └── utils.py
+├── structure.txt
+└── tests
+    ├── __init__.py
+    ├── test_article_module.py
+    ├── test_firestore_module.py
+    ├── test_supabase_module.py
+    └── test_utils.py
+
+4 directories, 22 files
